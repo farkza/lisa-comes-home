@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Lisa" },
+      { name: "description", content: "Countdown to Lisa's GR20 return, calculating days until June 19, 2026." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Lisa" },
+      { property: "og:description", content: "Countdown to Lisa's GR20 return, calculating days until June 19, 2026." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lisa" },
+      { name: "twitter:description", content: "Countdown to Lisa's GR20 return, calculating days until June 19, 2026." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/26ee14f3-5a32-44f4-9be7-8f6f341426b5/id-preview-6f66ff5e--62a0a499-cca7-4bdb-a9ad-bc00fc7e3596.lovable.app-1779967234178.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/26ee14f3-5a32-44f4-9be7-8f6f341426b5/id-preview-6f66ff5e--62a0a499-cca7-4bdb-a9ad-bc00fc7e3596.lovable.app-1779967234178.png" },
     ],
     links: [
       {
