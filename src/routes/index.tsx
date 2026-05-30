@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
+import { Journal } from "@/components/Journal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const DEPART = new Date("2026-06-03T00:00:00");
+const DEPART = new Date("2026-06-04T00:00:00");
 const RETOUR = new Date("2026-06-19T23:59:59");
 
 function useCountdown(target: Date) {
