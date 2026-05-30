@@ -50,10 +50,10 @@ Une petite application web pour compter les jours jusqu'au retour de Lisa de son
 
 ```bash
 # Installer les dépendances
-bun install
+npm install
 
 # Lancer le serveur de développement
-bun dev
+npm run dev
 ```
 
 ## 📝 License
