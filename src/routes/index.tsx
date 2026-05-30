@@ -148,7 +148,9 @@ function Index() {
           </div>
         </div>
 
-        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "700ms" }}>
+        <Journal />
+
+        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "800ms" }}>
           « Les montagnes te rendront ce que tu leur donnes. »
         </p>
       </div>
