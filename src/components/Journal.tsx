@@ -59,9 +59,10 @@ export function Journal() {
 
   const update = (idx: number, patch: Partial<DayEntry>) => {
     setEntries((prev) => {
+      const base: DayEntry = prev[idx] ?? { km: 0, denivele: 0, note: "" };
       const next = {
         ...prev,
-        [idx]: { km: 0, denivele: 0, note: "", ...prev[idx], ...patch },
+        [idx]: { ...base, ...patch },
       };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
