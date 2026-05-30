@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
+import { Journal } from "@/components/Journal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const DEPART = new Date("2026-06-03T00:00:00");
+const DEPART = new Date("2026-06-04T00:00:00");
 const RETOUR = new Date("2026-06-19T23:59:59");
 
 function useCountdown(target: Date) {
@@ -106,7 +107,7 @@ function Index() {
         {/* Progress */}
         <div className="mt-10 animate-fade-up" style={{ animationDelay: "500ms" }}>
           <div className="flex justify-between text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            <span>3 juin</span>
+            <span>4 juin</span>
             <span className="text-primary font-medium">{Math.round(progress)}%</span>
             <span>19 juin</span>
           </div>
@@ -147,7 +148,9 @@ function Index() {
           </div>
         </div>
 
-        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "700ms" }}>
+        <Journal />
+
+        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "800ms" }}>
           « Les montagnes te rendront ce que tu leur donnes. »
         </p>
       </div>
