@@ -123,7 +123,7 @@ export function Journal() {
               }}
             />
           </div>
-          <div className="mt-4 grid grid-cols-8 sm:grid-cols-16 gap-1.5">
+          <div className="mt-4 grid grid-cols-8 sm:grid-cols-[repeat(16,minmax(0,1fr))] gap-1.5">
             {Array.from({ length: TOTAL_DAYS }).map((_, i) => {
               const e = entries[i];
               const done = e && (e.km > 0 || e.denivele > 0 || e.note?.trim());
