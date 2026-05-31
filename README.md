@@ -56,6 +56,25 @@ npm install
 npm run dev
 ```
 
+## ☁️ Déploiement sur Vercel
+
+Le projet est préconfiguré pour Vercel (preset Nitro `vercel`).
+
+**En 1 clic :**
+1. Pousse le repo sur GitHub
+2. Va sur [vercel.com/new](https://vercel.com/new) et importe le repo
+3. Vercel détecte automatiquement la config (`vercel.json`) — clique **Deploy**
+
+**En CLI :**
+```bash
+npm i -g vercel
+vercel        # preview
+vercel --prod # production
+```
+
+Aucune variable d'environnement n'est requise (le journal est stocké en `localStorage` côté navigateur).
+
 ## 📝 License
 
 Projet perso, fait avec ❤️ pour Lisa.
+
