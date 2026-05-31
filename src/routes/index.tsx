@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
+import "../styles.css";
 
 export const Route = createFileRoute("/")({
   head: () => ({
