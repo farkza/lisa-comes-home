@@ -7,27 +7,26 @@ type DayEntry = {
 };
 
 const HIKE_START = new Date("2026-06-04T00:00:00");
-const TOTAL_DAYS = 16; // 4 juin -> 19 juin inclus
+const TOTAL_DAYS = 15; // 15 étapes officielles, du 4 au 18 juin
 const GOAL_KM = 180;
 const GOAL_DENIVELE = 12000;
 const STORAGE_KEY = "lisa-gr20-journal-v1";
 
 const STAGES = [
-  "Calenzana → Refuge d'Ortu di u Piobbu",
-  "Ortu di u Piobbu → Refuge de Carrozzu",
+  "Calenzana → Ortu di u Piobbu",
+  "Ortu di u Piobbu → Carrozzu",
   "Carrozzu → Ascu Stagnu",
-  "Ascu Stagnu → Refuge de Tighjettu",
-  "Tighjettu → Refuge de Ciottulu di i Mori",
-  "Ciottulu di i Mori → Castel di Vergio",
-  "Castel di Vergio → Refuge de Manganu",
-  "Manganu → Refuge de Petra Piana",
-  "Petra Piana → Refuge de l'Onda",
-  "L'Onda → Vizzavona",
-  "Vizzavona → E Capanelle",
-  "E Capanelle → Refuge de Prati",
-  "Prati → Refuge d'Usciolu",
-  "Usciolu → Refuge d'Asinau",
-  "Asinau → Refuge de Paliri (par les aiguilles de Bavella)",
+  "Ascu Stagnu → Ballone (via Tighjettu)",
+  "Ballone → Castel de Vergio",
+  "Castel de Vergio → Vaccaghja",
+  "Vaccaghja → Petra Piana",
+  "Petra Piana → Onda",
+  "Onda → Vizzavona",
+  "Vizzavona → Capannelle (via u Fugone)",
+  "Capannelle → Usciolu (via u Fugone)",
+  "Usciolu → I Croci",
+  "I Croci → Asinau",
+  "Asinau → Paliri",
   "Paliri → Conca",
 ];
 
