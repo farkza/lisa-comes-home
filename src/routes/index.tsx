@@ -110,7 +110,7 @@ function Index() {
           <div className="flex justify-between text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <span>4 juin</span>
             <span className="text-primary font-medium">{Math.round(progress)}%</span>
-            <span>19 juin</span>
+            <span>18 juin</span>
           </div>
           <div className="h-2 rounded-full bg-secondary overflow-hidden">
             <div
