@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { GR20_STAGES, getCurrentStageIndex } from "@/lib/gr20-stages";
+import { useJournalContext } from "../lib/journal-context";
 
-// Bounding box géo de la Corse : lon [8.53, 9.57], lat [41.33, 43.02]
 const GEO = { lonMin: 8.53, lonMax: 9.57, latMin: 41.33, latMax: 43.02 };
 const W = 400;
 const H = 520;
@@ -12,7 +12,6 @@ function project(lat: number, lon: number): [number, number] {
   return [x, y];
 }
 
-// Outline simplifié de la Corse (polygone approximatif, sens horaire)
 const CORSICA_OUTLINE = [
   [43.02, 9.39],
   [42.97, 9.45],
@@ -59,13 +58,32 @@ const corsicaPath =
   ) + " Z";
 
 export function GR20Map() {
-  const currentIdx = getCurrentStageIndex();
+  const todayIdx = getCurrentStageIndex();
+  const { selectedStage, setSelectedStage, completedStages } = useJournalContext();
+
+  // Highlighted stage: journal selection > today's stage
+  const highlightIdx = selectedStage >= 0 ? selectedStage : todayIdx;
 
   const points = useMemo(() => GR20_STAGES.map((s) => project(s.lat, s.lon)), []);
 
   const polyline = points
     .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
     .join(" ");
+
+  // Completed path: up to last completed stage
+  const lastCompleted = Math.max(-1, ...Array.from(completedStages));
+  const completedPolyline =
+    lastCompleted >= 0
+      ? points
+          .slice(0, lastCompleted + 1)
+          .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+          .join(" ")
+      : null;
+
+  const s = highlightIdx >= 0 ? GR20_STAGES[highlightIdx] : null;
+  const [hx, hy] = highlightIdx >= 0 ? points[highlightIdx] : [0, 0];
+  const labelX = hx > W * 0.65 ? hx - 8 : hx + 8;
+  const anchor = hx > W * 0.65 ? "end" : "start";
 
   return (
     <section className="mt-12 animate-fade-up" style={{ animationDelay: "650ms" }}>
@@ -82,6 +100,10 @@ export function GR20Map() {
               <stop offset="0%" stopColor="oklch(0.22 0.04 230)" />
               <stop offset="100%" stopColor="oklch(0.14 0.03 230)" />
             </radialGradient>
+            <linearGradient id="trailGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="oklch(0.78 0.14 50)" />
+              <stop offset="100%" stopColor="oklch(0.55 0.18 340)" />
+            </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="3" result="blur" />
               <feMerge>
@@ -98,10 +120,8 @@ export function GR20Map() {
             </filter>
           </defs>
 
-          {/* Fond */}
           <rect width={W} height={H} fill="url(#bgGrad)" rx="12" />
 
-          {/* Mer — petits points décoratifs */}
           {Array.from({ length: 18 }, (_, i) => (
             <circle
               key={i}
@@ -121,34 +141,53 @@ export function GR20Map() {
             strokeLinejoin="round"
           />
 
-          {/* Tracé GR20 — halo */}
+          {/* Tracé GR20 complet — grisé */}
           <path
             d={polyline}
             fill="none"
-            stroke="oklch(0.65 0.20 28 / 0.35)"
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Tracé GR20 — trait principal */}
-          <path
-            d={polyline}
-            fill="none"
-            stroke="oklch(0.72 0.22 28)"
+            stroke="oklch(0.45 0.04 230 / 0.5)"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            filter="url(#softGlow)"
+            strokeDasharray="4 3"
           />
 
-          {/* Étapes */}
-          {GR20_STAGES.map((s, i) => {
+          {/* Tracé complété — coloré */}
+          {completedPolyline && (
+            <>
+              <path
+                d={completedPolyline}
+                fill="none"
+                stroke="oklch(0.65 0.20 28 / 0.35)"
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d={completedPolyline}
+                fill="none"
+                stroke="url(#trailGrad)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#softGlow)"
+              />
+            </>
+          )}
+
+          {/* Étapes — cliquables */}
+          {GR20_STAGES.map((stage, i) => {
             const [x, y] = points[i];
-            const isCurrent = i === currentIdx;
-            const isPast = i < currentIdx;
+            const isHighlighted = i === highlightIdx;
+            const isCompleted = completedStages.has(i);
+            const isToday = i === todayIdx;
+
             return (
-              <g key={s.day}>
-                {isCurrent && (
+              <g key={stage.day} style={{ cursor: "pointer" }} onClick={() => setSelectedStage(i)}>
+                {/* Zone de clic élargie */}
+                <circle cx={x} cy={y} r="12" fill="transparent" />
+
+                {isHighlighted && (
                   <>
                     <circle cx={x} cy={y} r="18" fill="oklch(0.75 0.18 50 / 0.15)">
                       <animate
@@ -174,22 +213,29 @@ export function GR20Map() {
                     </circle>
                   </>
                 )}
+
                 <circle
                   cx={x}
                   cy={y}
-                  r={isCurrent ? 5.5 : 3.5}
+                  r={isHighlighted ? 5.5 : 3.5}
                   fill={
-                    isCurrent
+                    isHighlighted
                       ? "oklch(0.85 0.18 55)"
-                      : isPast
-                        ? "oklch(0.60 0.15 28)"
-                        : "oklch(0.40 0.08 28)"
+                      : isCompleted
+                        ? "oklch(0.65 0.18 28)"
+                        : isToday
+                          ? "oklch(0.70 0.15 50)"
+                          : "oklch(0.35 0.06 230)"
                   }
                   stroke={
-                    isCurrent ? "white" : isPast ? "oklch(0.72 0.22 28)" : "oklch(0.50 0.10 28)"
+                    isHighlighted
+                      ? "white"
+                      : isCompleted
+                        ? "oklch(0.78 0.20 28)"
+                        : "oklch(0.50 0.08 230)"
                   }
-                  strokeWidth={isCurrent ? 2 : 1}
-                  filter={isCurrent ? "url(#glow)" : undefined}
+                  strokeWidth={isHighlighted ? 2 : 1}
+                  filter={isHighlighted ? "url(#glow)" : undefined}
                 />
               </g>
             );
@@ -225,43 +271,35 @@ export function GR20Map() {
             );
           })()}
 
-          {/* Label étape courante */}
-          {currentIdx >= 0 &&
-            currentIdx < GR20_STAGES.length &&
-            (() => {
-              const s = GR20_STAGES[currentIdx];
-              const [x, y] = points[currentIdx];
-              const labelX = x > W * 0.65 ? x - 8 : x + 8;
-              const anchor = x > W * 0.65 ? "end" : "start";
-              return (
-                <g>
-                  <rect
-                    x={anchor === "start" ? labelX - 2 : labelX - 110}
-                    y={y + 8}
-                    width={112}
-                    height={22}
-                    rx={4}
-                    fill="oklch(0.15 0.04 230 / 0.85)"
-                    stroke="oklch(0.75 0.18 50 / 0.5)"
-                    strokeWidth="0.8"
-                  />
-                  <text
-                    x={anchor === "start" ? labelX + 4 : labelX - 4}
-                    y={y + 23}
-                    fontSize="8.5"
-                    fill="oklch(0.90 0.12 55)"
-                    fontFamily="monospace"
-                    textAnchor={anchor}
-                  >
-                    Jour {s.day} · {s.from}
-                  </text>
-                </g>
-              );
-            })()}
+          {/* Label étape sélectionnée */}
+          {s && (
+            <g>
+              <rect
+                x={anchor === "start" ? labelX - 2 : labelX - 130}
+                y={hy + 8}
+                width={132}
+                height={22}
+                rx={4}
+                fill="oklch(0.15 0.04 230 / 0.90)"
+                stroke="oklch(0.75 0.18 50 / 0.5)"
+                strokeWidth="0.8"
+              />
+              <text
+                x={anchor === "start" ? labelX + 4 : labelX - 4}
+                y={hy + 23}
+                fontSize="8.5"
+                fill="oklch(0.90 0.12 55)"
+                fontFamily="monospace"
+                textAnchor={anchor}
+              >
+                Jour {s.day} · {s.from} → {s.to}
+              </text>
+            </g>
+          )}
 
           {/* Légende */}
-          <g transform={`translate(12, ${H - 38})`}>
-            <rect width="110" height="30" rx="6" fill="oklch(0.15 0.04 230 / 0.7)" />
+          <g transform={`translate(12, ${H - 52})`}>
+            <rect width="120" height="44" rx="6" fill="oklch(0.15 0.04 230 / 0.75)" />
             <circle
               cx="14"
               cy="10"
@@ -271,24 +309,35 @@ export function GR20Map() {
               strokeWidth="1.5"
             />
             <text x="22" y="14" fontSize="7.5" fill="oklch(0.75 0.08 50)" fontFamily="monospace">
-              Étape actuelle
+              Étape sélectionnée
             </text>
             <circle
               cx="14"
-              cy="22"
-              r="3"
-              fill="oklch(0.60 0.15 28)"
-              stroke="oklch(0.72 0.22 28)"
+              cy="24"
+              r="3.5"
+              fill="oklch(0.65 0.18 28)"
+              stroke="oklch(0.78 0.20 28)"
               strokeWidth="1"
             />
-            <text x="22" y="26" fontSize="7.5" fill="oklch(0.65 0.08 50)" fontFamily="monospace">
-              Étape passée
+            <text x="22" y="28" fontSize="7.5" fill="oklch(0.65 0.08 50)" fontFamily="monospace">
+              Étape complétée
+            </text>
+            <circle
+              cx="14"
+              cy="37"
+              r="3"
+              fill="oklch(0.35 0.06 230)"
+              stroke="oklch(0.50 0.08 230)"
+              strokeWidth="1"
+            />
+            <text x="22" y="41" fontSize="7.5" fill="oklch(0.50 0.06 230)" fontFamily="monospace">
+              À venir
             </text>
           </g>
         </svg>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        15 étapes · Calenzana → Conca · l'étape du jour clignote en orange.
+        Clique sur une étape pour la voir dans le journal · le tracé coloré suit la progression.
       </p>
     </section>
   );
