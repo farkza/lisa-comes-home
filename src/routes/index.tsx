@@ -93,7 +93,7 @@ function Index() {
               ? "Elle est rentrée ! Va lui faire un câlin. 💛"
               : isAway
               ? "Elle est sur les crêtes corses en ce moment même. Plus que…"
-              : "Le grand départ approche. Profitez bien d'ici là."}
+              : "Bientôt le grand départ. Profite de chaque instant avec elle d'ici là. 💛"}
           </p>
         </div>
 
