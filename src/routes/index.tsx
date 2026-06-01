@@ -189,9 +189,13 @@ function Index() {
           </div>
         </div>
 
+        <GR20Map />
+
+        <Gallery />
+
         <Journal />
 
-        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "800ms" }}>
+        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "900ms" }}>
           « Les montagnes te rendront ce que tu leur donnes. »
         </p>
       </div>
