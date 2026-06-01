@@ -59,6 +59,26 @@
   --rose: oklch(0.7 0.17 10);
 }
 
+/* Night palette: takes over from 20:00 to 06:59 */
+:root.night {
+  --background: oklch(0.18 0.04 280);
+  --foreground: oklch(0.95 0.02 60);
+  --card: oklch(0.22 0.05 280);
+  --card-foreground: oklch(0.95 0.02 60);
+  --popover: oklch(0.22 0.05 280);
+  --popover-foreground: oklch(0.95 0.02 60);
+  --primary: oklch(0.75 0.18 30);
+  --primary-foreground: oklch(0.2 0.04 280);
+  --secondary: oklch(0.28 0.05 280);
+  --secondary-foreground: oklch(0.95 0.02 60);
+  --muted: oklch(0.26 0.04 280);
+  --muted-foreground: oklch(0.7 0.04 280);
+  --accent: oklch(0.7 0.18 60);
+  --border: oklch(0.32 0.05 280);
+  --input: oklch(0.28 0.05 280);
+  --ring: oklch(0.75 0.18 30);
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   body {
@@ -69,6 +89,13 @@
       radial-gradient(ellipse 80% 60% at 50% 100%, oklch(0.85 0.1 15) 0%, transparent 70%),
       oklch(0.97 0.02 50);
     min-height: 100vh;
+    transition: background 1.2s ease;
+  }
+  :root.night body {
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 0%, oklch(0.28 0.08 280) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, oklch(0.32 0.1 320) 0%, transparent 70%),
+      oklch(0.14 0.03 280);
   }
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
@@ -93,9 +120,27 @@
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.4); }
+}
+@keyframes petal-fall {
+  0% { transform: translate(0, -10vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { transform: translate(var(--drift, 10vw), 110vh) rotate(360deg); opacity: 0; }
+}
+@keyframes hike {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  50% { transform: translateY(-65%) translateX(0); }
+}
+
 .animate-float { animation: float-up 5s ease-in-out infinite; }
 .animate-glow { animation: glow-pulse 4s ease-in-out infinite; }
 .animate-fade-up { animation: fade-up 0.8s ease-out backwards; }
+.animate-twinkle { animation: twinkle 4s ease-in-out infinite; }
+.animate-petal { animation: petal-fall linear infinite; will-change: transform; }
+.animate-hike { animation: hike 0.6s ease-in-out infinite; }
+
 .text-sunset {
   background: linear-gradient(120deg, oklch(0.7 0.17 30), oklch(0.65 0.2 10), oklch(0.55 0.18 340));
   background-size: 200% auto;
@@ -104,3 +149,11 @@
   color: transparent;
   animation: shimmer 6s ease-in-out infinite;
 }
+
+/* Leaflet popup styling so it blends with the theme */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  border-radius: 0.75rem !important;
+}
+
