@@ -2,7 +2,33 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
+import { Particles } from "@/components/Particles";
+import { GR20Map } from "@/components/GR20Map";
+import { Gallery } from "@/components/Gallery";
 import "../styles.css";
+
+function useScrollY() {
+  const [y, setY] = useState(0);
+  useEffect(() => {
+    const onScroll = () => setY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return y;
+}
+
+function useDayNightMode() {
+  useEffect(() => {
+    const apply = () => {
+      const h = new Date().getHours();
+      const isNight = h >= 20 || h < 7;
+      document.documentElement.classList.toggle("night", isNight);
+    };
+    apply();
+    const id = setInterval(apply, 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -54,11 +80,17 @@ function Index() {
   const progress = (elapsed / totalTrip) * 100;
   const isAway = now >= DEPART && now <= RETOUR;
   const isBack = now > RETOUR;
+  const scrollY = useScrollY();
+  useDayNightMode();
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      {/* Background image */}
-      <div className="absolute inset-0 -z-10">
+      <Particles />
+      {/* Background image with parallax */}
+      <div
+        className="absolute inset-0 -z-10 will-change-transform"
+        style={{ transform: `translateY(${scrollY * 0.3}px) scale(${1 + scrollY * 0.0003})` }}
+      >
         <img
           src={corsica}
           alt=""
@@ -112,7 +144,7 @@ function Index() {
             <span className="text-primary font-medium">{Math.round(progress)}%</span>
             <span>18 juin</span>
           </div>
-          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+          <div className="relative h-2 rounded-full bg-secondary">
             <div
               className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
@@ -121,6 +153,14 @@ function Index() {
                 boxShadow: "0 0 20px oklch(0.7 0.17 10 / 0.5)",
               }}
             />
+            {/* Little hiker walking along the progress bar */}
+            <div
+              className="absolute top-1/2 text-2xl select-none transition-all duration-1000 ease-out"
+              style={{ left: `calc(${progress}% - 14px)`, transform: "translateY(-50%)" }}
+              aria-hidden
+            >
+              <span className="inline-block animate-hike">🥾</span>
+            </div>
           </div>
         </div>
 
@@ -149,9 +189,13 @@ function Index() {
           </div>
         </div>
 
+        <GR20Map />
+
+        <Gallery />
+
         <Journal />
 
-        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "800ms" }}>
+        <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "900ms" }}>
           « Les montagnes te rendront ce que tu leur donnes. »
         </p>
       </div>
