@@ -80,11 +80,17 @@ function Index() {
   const progress = (elapsed / totalTrip) * 100;
   const isAway = now >= DEPART && now <= RETOUR;
   const isBack = now > RETOUR;
+  const scrollY = useScrollY();
+  useDayNightMode();
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      {/* Background image */}
-      <div className="absolute inset-0 -z-10">
+      <Particles />
+      {/* Background image with parallax */}
+      <div
+        className="absolute inset-0 -z-10 will-change-transform"
+        style={{ transform: `translateY(${scrollY * 0.3}px) scale(${1 + scrollY * 0.0003})` }}
+      >
         <img
           src={corsica}
           alt=""
