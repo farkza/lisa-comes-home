@@ -2,7 +2,33 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
+import { Particles } from "@/components/Particles";
+import { GR20Map } from "@/components/GR20Map";
+import { Gallery } from "@/components/Gallery";
 import "../styles.css";
+
+function useScrollY() {
+  const [y, setY] = useState(0);
+  useEffect(() => {
+    const onScroll = () => setY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return y;
+}
+
+function useDayNightMode() {
+  useEffect(() => {
+    const apply = () => {
+      const h = new Date().getHours();
+      const isNight = h >= 20 || h < 7;
+      document.documentElement.classList.toggle("night", isNight);
+    };
+    apply();
+    const id = setInterval(apply, 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
