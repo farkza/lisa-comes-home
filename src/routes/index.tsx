@@ -153,14 +153,6 @@ function Index() {
                 boxShadow: "0 0 20px oklch(0.7 0.17 10 / 0.5)",
               }}
             />
-            {/* Little hiker walking along the progress bar */}
-            <div
-              className="absolute top-1/2 text-2xl select-none transition-all duration-1000 ease-out"
-              style={{ left: `calc(${progress}% - 14px)`, transform: "translateY(-50%)" }}
-              aria-hidden
-            >
-              <span className="inline-block animate-hike">🥾</span>
-            </div>
           </div>
         </div>
 
