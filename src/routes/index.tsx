@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
 import { Particles } from "@/components/Particles";
-import { GR20Map } from "@/components/GR20Map";
 import { Gallery } from "@/components/Gallery";
 import "../styles.css";
 
@@ -180,8 +179,6 @@ function Index() {
             </div>
           </div>
         </div>
-
-        <GR20Map />
 
         <Gallery />
 
