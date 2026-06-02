@@ -130,7 +130,6 @@ function ProfileAdmin() {
   }, []);
 
   async function handleFile(file: File) {
-    // Vérifie que c'est bien une image
     if (!file.type.startsWith("image/")) {
       alert("Merci de sélectionner une image (JPG, PNG…)");
       return;
@@ -138,13 +137,15 @@ function ProfileAdmin() {
 
     setUploading(true);
     try {
-      // upsert: remplace le fichier existant au même chemin
+      // Conversion en ArrayBuffer — obligatoire pour Safari (iOS + macOS)
+      const arrayBuffer = await file.arrayBuffer();
+
       const { error: upErr } = await supabase.storage
         .from(PROFILE_BUCKET)
-        .upload(PROFILE_PATH, file, {
+        .upload(PROFILE_PATH, arrayBuffer, {
           cacheControl: "0",
           contentType: file.type,
-          upsert: true, // ← écrase l'ancienne photo de profil
+          upsert: true,
         });
 
       if (upErr) throw upErr;
@@ -187,23 +188,26 @@ function ProfileAdmin() {
           <p className="text-sm text-muted-foreground">
             Format JPG ou PNG · Remplace automatiquement l'ancienne photo.
           </p>
+          {/* Safari desktop : l'input doit être visible dans le DOM avec une taille réelle,
+               pas sr-only (clip+overflow:hidden bloque le dialog sur Safari macOS) */}
           <label
-            style={{ position: "relative", display: "inline-flex", overflow: "hidden" }}
-            className="items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition w-fit"
+            htmlFor="profile-file-input"
+            className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition w-fit cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
           >
             {uploading ? "Envoi…" : "🖼️ Changer la photo"}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", fontSize: 0 }}
-              disabled={uploading}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-              }}
-            />
           </label>
+          <input
+            id="profile-file-input"
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "1px", height: "1px" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+              e.target.value = "";
+            }}
+          />
         </div>
       </div>
     </div>
@@ -266,10 +270,13 @@ function GalleryAdmin() {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
+      // Conversion en ArrayBuffer — obligatoire pour Safari (iOS + macOS)
+      const arrayBuffer = await file.arrayBuffer();
+
       // 1. Upload dans le bucket Storage
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
-        .upload(path, file, {
+        .upload(path, arrayBuffer, {
           cacheControl: "3600",
           contentType: file.type || "image/jpeg",
           upsert: false,
@@ -325,22 +332,23 @@ function GalleryAdmin() {
           className="flex-1 px-3 py-2 rounded-xl bg-background/60 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <label
-          style={{ position: "relative", display: "inline-flex", overflow: "hidden" }}
-          className="items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition"
+          htmlFor="gallery-file-input"
+          className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
         >
           {uploading ? "Envoi…" : "📷 Ajouter"}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", fontSize: 0 }}
-            disabled={uploading}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-            }}
-          />
         </label>
+        <input
+          id="gallery-file-input"
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "1px", height: "1px" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       {/* Grille de photos */}
@@ -363,11 +371,11 @@ function GalleryAdmin() {
                   {p.caption}
                 </figcaption>
               )}
-              {/* Bouton de suppression visible au survol */}
+              {/* Bouton suppression : toujours visible sur mobile, hover sur desktop */}
               <button
                 type="button"
                 onClick={() => handleDelete(p)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 text-white text-xs flex items-center justify-center transition hover:bg-red-600 sm:opacity-0 sm:group-hover:opacity-100"
                 title="Supprimer"
               >
                 ✕
@@ -390,7 +398,7 @@ type DayEntry = {
   note: string;
 };
 
-const HIKE_START = new Date("2026-06-04T00:00:00");
+const HIKE_START = new Date("2026-06-04T12:00:00");  // midi pour éviter décalage UTC/local sur Safari
 const TOTAL_DAYS = 15;
 
 function formatDate(d: Date) {
@@ -450,6 +458,25 @@ function JournalAdmin() {
       if (diff >= 0 && diff < TOTAL_DAYS) setSelected(diff);
     })();
   }, []);
+
+  async function handleClear() {
+    if (!confirm("Effacer les données de ce jour ?")) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("gr20_journal").upsert(
+        { hiker: "lisa", day_index: selected, stage: days[selected]?.stage || "", km: 0, denivele: 0, note: "" },
+        { onConflict: "hiker,day_index" }
+      );
+      if (error) throw error;
+      setDays((prev) => prev.map((d) => d.day_index === selected ? { ...d, km: 0, denivele: 0, note: "" } : d));
+      setSaveStatus("ok");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -578,13 +605,21 @@ function JournalAdmin() {
       </label>
 
       {/* Bouton + feedback */}
-      <div className="mt-6 flex items-center gap-4">
+      <div className="mt-6 flex items-center gap-3 flex-wrap">
         <button
           type="submit"
           disabled={saving}
           className="px-8 py-3 rounded-2xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? "Enregistrement…" : "Enregistrer le jour"}
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={handleClear}
+          className="px-4 py-3 rounded-2xl border border-white/20 text-muted-foreground text-sm hover:border-red-400 hover:text-red-400 transition disabled:opacity-50"
+        >
+          🗑 Effacer
         </button>
         {saveStatus === "ok" && (
           <span className="text-sm text-green-400">✓ Sauvegardé !</span>
