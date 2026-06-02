@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type DayEntry = {
@@ -66,9 +66,7 @@ DayButton.displayName = "DayButton";
 export function Journal() {
   const [days, setDays] = useState<DayEntry[]>([]);
   const [selected, setSelected] = useState(0);
-  const [saving, setSaving] = useState(false);
 
-  // Chargement initial depuis Supabase (PULL UNIQUE)
   useEffect(() => {
     (async () => {
       try {
@@ -105,7 +103,6 @@ export function Journal() {
 
         setDays(loadedDays);
 
-        // Sélection automatique du jour actuel par rapport au départ du GR20
         const today = new Date();
         const diffDays = Math.floor(
           (today.getTime() - HIKE_START.getTime()) / 86400000
@@ -120,7 +117,6 @@ export function Journal() {
     })();
   }, []);
 
-  // Calculs simples pour les compteurs globaux
   const { totalKm, totalDen, daysDone } = useMemo(() => {
     let km = 0;
     let den = 0;
@@ -140,6 +136,7 @@ export function Journal() {
   const totalDays = days.length || TOTAL_DAYS;
   const progressPct = totalDays > 0 ? Math.round((daysDone / totalDays) * 100) : 0;
   const selectedDate = new Date(HIKE_START.getTime() + selected * 86400000);
+  const selectedEntry = days[selected];
 
   return (
     <section className="mt-12 animate-fade-up" style={{ animationDelay: "750ms" }}>
@@ -219,146 +216,74 @@ export function Journal() {
         </div>
       </div>
 
-      <DayForm
-        key={selected}
-        selected={selected}
-        totalDays={totalDays}
-        selectedDate={selectedDate}
-        stage={days[selected]?.stage ?? ""}
-        initialKm={days[selected]?.km ?? 0}
-        initialDenivele={days[selected]?.denivele ?? 0}
-        initialNote={days[selected]?.note ?? ""}
-        onPrev={() => setSelected((s) => Math.max(0, s - 1))}
-        onNext={() => setSelected((s) => Math.min(totalDays - 1, s + 1))}
-        onSave={async (km, denivele, note) => {
-          setSaving(true);
-          try {
-            // PUSH vers la base de données
-            const { error } = await supabase
-              .from("gr20_journal")
-              .update({ km, denivele, note })
-              .eq("hiker", "lisa")
-              .eq("day_index", selected);
+      {/* Day detail card — read-only */}
+      <div className="mt-5 rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+              Jour {selected + 1} · {formatDate(selectedDate)}
+            </p>
+            <p className="mt-1 font-display text-xl text-sunset">
+              {selectedEntry?.stage || "—"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="p-2 border rounded-lg hover:bg-white/10"
+              onClick={() => setSelected((s) => Math.max(0, s - 1))}
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              className="p-2 border rounded-lg hover:bg-white/10"
+              onClick={() => setSelected((s) => Math.min(totalDays - 1, s + 1))}
+            >
+              →
+            </button>
+          </div>
+        </div>
 
-            if (error) throw error;
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div className="rounded-xl bg-background/40 border border-white/30 p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Kilomètres</p>
+            <p className="font-display text-2xl tabular-nums mt-1">
+              {selectedEntry?.km > 0 ? selectedEntry.km.toFixed(1) : "—"}
+              {selectedEntry?.km > 0 && (
+                <span className="text-xs text-muted-foreground"> km</span>
+              )}
+            </p>
+          </div>
 
-            // Simple rechargement de la page pour pull les nouvelles données proprement
-            window.location.reload();
-          } catch (err) {
-            console.error("Erreur de sauvegarde:", err);
-            alert("Erreur lors de la sauvegarde.");
-            setSaving(false);
-          }
-        }}
-        saving={saving}
-      />
-    </section>
-  );
-}
+          <div className="rounded-xl bg-background/40 border border-white/30 p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Dénivelé</p>
+            <p className="font-display text-2xl tabular-nums mt-1">
+              {selectedEntry?.denivele > 0
+                ? selectedEntry.denivele.toLocaleString("fr-FR")
+                : "—"}
+              {selectedEntry?.denivele > 0 && (
+                <span className="text-xs text-muted-foreground"> m</span>
+              )}
+            </p>
+          </div>
+        </div>
 
-type DayFormProps = {
-  selected: number;
-  totalDays: number;
-  selectedDate: Date;
-  stage: string;
-  initialKm: number;
-  initialDenivele: number;
-  initialNote: string;
-  onPrev: () => void;
-  onNext: () => void;
-  onSave: (km: number, denivele: number, note: string) => Promise<void>;
-  saving: boolean;
-};
-
-function DayForm({
-  selected,
-  selectedDate,
-  stage,
-  initialKm,
-  initialNote,
-  initialDenivele,
-  onPrev,
-  onNext,
-  onSave,
-  saving,
-}: DayFormProps) {
-  const kmRef = useRef<HTMLInputElement>(null);
-  const deniveleRef = useRef<HTMLInputElement>(null);
-  const noteRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const km = parseFloat(kmRef.current?.value ?? "") || 0;
-    const denivele = parseInt(deniveleRef.current?.value ?? "") || 0;
-    const note = noteRef.current?.value ?? "";
-    onSave(km, denivele, note);
-  };
-
-  const inputClass =
-    "mt-1 w-full rounded-xl bg-background/60 border border-white/30 px-4 py-3 font-display text-lg tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40";
-
-  return (
-    <form onSubmit={handleSave} className="mt-5 rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            Jour {selected + 1} · {formatDate(selectedDate)}
+        {selectedEntry?.note ? (
+          <div className="mt-5 rounded-xl bg-background/40 border border-white/30 px-4 py-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+              Carnet du jour
+            </p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
+              {selectedEntry.note}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-5 text-sm text-muted-foreground italic">
+            Aucune note pour ce jour.
           </p>
-          <p className="mt-1 font-display text-xl text-sunset">{stage}</p>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" className="p-2 border rounded-lg hover:bg-white/10" onClick={onPrev}>←</button>
-          <button type="button" className="p-2 border rounded-lg hover:bg-white/10" onClick={onNext}>→</button>
-        </div>
+        )}
       </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Kilomètres</span>
-          <input
-            ref={kmRef}
-            type="number"
-            step="0.1"
-            inputMode="decimal"
-            defaultValue={initialKm > 0 ? String(initialKm) : ""}
-            className={inputClass}
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Dénivelé (m)</span>
-          <input
-            ref={deniveleRef}
-            type="number"
-            inputMode="numeric"
-            defaultValue={initialDenivele > 0 ? String(initialDenivele) : ""}
-            className={inputClass}
-          />
-        </label>
-      </div>
-
-      <label className="mt-5 block">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Carnet du jour
-        </span>
-        <textarea
-          ref={noteRef}
-          defaultValue={initialNote}
-          placeholder="Lever de soleil sur le Cinto, jambes lourdes mais cœur léger…"
-          rows={5}
-          className="mt-1 w-full resize-y rounded-xl bg-background/60 border border-white/30 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
-      </label>
-
-      <div className="mt-6 flex items-center justify-between">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-8 py-3 rounded-2xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {saving ? "Enregistrement..." : "Enregistrer le jour"}
-        </button>
-      </div>
-    </form>
+    </section>
   );
 }

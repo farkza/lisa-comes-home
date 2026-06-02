@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
@@ -42,12 +42,19 @@ export const Route = createFileRoute("/")({
 const DEPART = new Date("2026-06-04T00:00:00");
 const RETOUR = new Date("2026-06-19T23:59:59");
 
+// Hook countdown — utilisé uniquement côté client (après hydration)
 function useCountdown(target: Date) {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
+
   useEffect(() => {
+    // On initialise APRÈS le mount pour éviter le mismatch SSR/client
+    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  if (!now) return { days: 0, hours: 0, minutes: 0, seconds: 0, now: null };
+
   const diff = Math.max(0, target.getTime() - now.getTime());
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
@@ -75,11 +82,14 @@ function Unit({ value, label, delay }: { value: number; label: string; delay: nu
 function Index() {
   const { days, hours, minutes, seconds, now } = useCountdown(RETOUR);
   const totalTrip = RETOUR.getTime() - DEPART.getTime();
-  const elapsed = Math.min(Math.max(0, now.getTime() - DEPART.getTime()), totalTrip);
-  const progress = (elapsed / totalTrip) * 100;
-  const isAway = now >= DEPART && now <= RETOUR;
-  const isBack = now > RETOUR;
+  const elapsed = now
+    ? Math.min(Math.max(0, now.getTime() - DEPART.getTime()), totalTrip)
+    : 0;
+  const progress = now ? (elapsed / totalTrip) * 100 : 0;
+  const isAway = now ? now >= DEPART && now <= RETOUR : false;
+  const isBack = now ? now > RETOUR : false;
   const scrollY = useScrollY();
+  const navigate = useNavigate();
   useDayNightMode();
 
   return (
@@ -100,10 +110,19 @@ function Index() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
       </div>
 
-      {/* Floating peach */}
-      <div className="pointer-events-none absolute top-20 right-6 sm:right-16 text-6xl sm:text-8xl animate-float select-none">
-        🍑
-      </div>
+      {/* Admin button — discret, coin haut droit */}
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/login" })}
+        aria-label="Accès admin"
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/20 hover:bg-white/10 hover:border-white/25 hover:text-white/50 transition-all duration-300"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+      </button>
+
       <div className="pointer-events-none absolute top-1/3 -left-4 text-5xl animate-glow select-none">
         ✨
       </div>
@@ -119,7 +138,8 @@ function Index() {
             <span className="text-sunset italic">Lisa</span>
             <span className="inline-block ml-2 text-4xl sm:text-5xl">🍑</span>
           </h1>
-          <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-md">
+          {/* suppressHydrationWarning ici : ce texte change selon now, qui diffère SSR/client */}
+          <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-md" suppressHydrationWarning>
             {isBack
               ? "Elle est rentrée ! Va lui faire un câlin. 💛"
               : isAway
@@ -128,8 +148,8 @@ function Index() {
           </p>
         </div>
 
-        {/* Countdown grid */}
-        <div className="mt-10 grid grid-cols-4 gap-2 sm:gap-3">
+        {/* Countdown grid — suppressHydrationWarning sur chaque valeur dynamique */}
+        <div className="mt-10 grid grid-cols-4 gap-2 sm:gap-3" suppressHydrationWarning>
           <Unit value={days} label="jours" delay={100} />
           <Unit value={hours} label="heures" delay={200} />
           <Unit value={minutes} label="min" delay={300} />
@@ -140,12 +160,15 @@ function Index() {
         <div className="mt-10 animate-fade-up" style={{ animationDelay: "500ms" }}>
           <div className="flex justify-between text-xs uppercase tracking-wider text-muted-foreground mb-2">
             <span>4 juin</span>
-            <span className="text-primary font-medium">{Math.round(progress)}%</span>
+            <span className="text-primary font-medium" suppressHydrationWarning>
+              {Math.round(progress)}%
+            </span>
             <span>18 juin</span>
           </div>
           <div className="relative h-2 rounded-full bg-secondary">
             <div
               className="h-full rounded-full transition-all duration-1000 ease-out"
+              suppressHydrationWarning
               style={{
                 width: `${progress}%`,
                 background: "linear-gradient(90deg, oklch(0.78 0.14 50), oklch(0.65 0.2 10), oklch(0.55 0.18 340))",
