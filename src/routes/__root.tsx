@@ -5,6 +5,20 @@ import {
   createRootRouteWithContext,
   useRouter,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
+
+function useDayNightMode() {
+  useEffect(() => {
+    const apply = () => {
+      const h = new Date().getHours();
+      const isNight = h >= 20 || h < 7;
+      document.documentElement.classList.toggle("night", isNight);
+    };
+    apply();
+    const id = setInterval(apply, 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
 
 function NotFoundComponent() {
   return (
@@ -80,6 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useDayNightMode();
 
   return (
     <QueryClientProvider client={queryClient}>
