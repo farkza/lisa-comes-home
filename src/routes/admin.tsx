@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,9 +65,9 @@ function Admin() {
             <span className="text-sm font-medium">Lisaaaaaaa</span>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="text-xs text-muted-foreground hover:text-foreground transition">
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition">
               ← Voir le site
-            </a>
+            </Link>
             <button
               type="button"
               onClick={handleLogout}

@@ -16,6 +16,19 @@ function useScrollY() {
   return y;
 }
 
+function useDayNightMode() {
+  useEffect(() => {
+    const apply = () => {
+      const h = new Date().getHours();
+      const isNight = h >= 20 || h < 7;
+      document.documentElement.classList.toggle("night", isNight);
+    };
+    apply();
+    const id = setInterval(apply, 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
