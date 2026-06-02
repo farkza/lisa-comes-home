@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      journal_entries: {
+        Row: {
+          created_at: string
+          day_index: number
+          denivele: number
+          id: string
+          km: number
+          note: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_index: number
+          denivele?: number
+          id?: string
+          km?: number
+          note?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_index?: number
+          denivele?: number
+          id?: string
+          km?: number
+          note?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       photos: {
         Row: {
           author: string | null
