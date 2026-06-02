@@ -77,13 +77,6 @@ export function Gallery() {
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <input
             type="text"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Toi (prénom)"
-            className="flex-1 sm:max-w-[140px] px-3 py-2 rounded-xl bg-background/60 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <input
-            type="text"
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="Une petite légende…"

@@ -1,96 +1,145 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type DayEntry = {
+  day_index: number;
+  stage: string;
   km: number;
   denivele: number;
   note: string;
 };
 
 const HIKE_START = new Date("2026-06-04T00:00:00");
-const TOTAL_DAYS = 15; // 15 étapes officielles, du 4 au 18 juin
-const GOAL_KM = 180;
-const GOAL_DENIVELE = 12000;
-const STORAGE_KEY = "lisa-gr20-journal-v1";
-
-const STAGES = [
-  "Calenzana → Ortu di u Piobbu",
-  "Ortu di u Piobbu → Carrozzu",
-  "Carrozzu → Ascu Stagnu",
-  "Ascu Stagnu → Ballone (via Tighjettu)",
-  "Ballone → Castel de Vergio",
-  "Castel de Vergio → Vaccaghja",
-  "Vaccaghja → Petra Piana",
-  "Petra Piana → Onda",
-  "Onda → Vizzavona",
-  "Vizzavona → Capannelle (via u Fugone)",
-  "Capannelle → Usciolu (via u Fugone)",
-  "Usciolu → I Croci",
-  "I Croci → Asinau",
-  "Asinau → Paliri",
-  "Paliri → Conca",
-];
+const TOTAL_DAYS = 15;
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
-function loadEntries(): Record<number, DayEntry> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+const DayButton = React.memo(
+  ({
+    i,
+    selected,
+    done,
+    onSelect,
+  }: {
+    i: number;
+    selected: number;
+    done: boolean;
+    onSelect: (i: number) => void;
+  }) => {
+    const isSel = i === selected;
+
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(i)}
+        aria-label={`Jour ${i + 1}`}
+        className={`group relative aspect-square rounded-lg border transition-all ${
+          isSel
+            ? "border-primary scale-110 shadow-[0_0_12px_oklch(0.7_0.17_10/0.6)]"
+            : "border-white/30 hover:border-primary/60"
+        } ${
+          done
+            ? "bg-gradient-to-br from-[oklch(0.78_0.14_50)] to-[oklch(0.55_0.18_340)]"
+            : "bg-secondary/60"
+        }`}
+      >
+        <span
+          className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold ${
+            done ? "text-white" : "text-muted-foreground"
+          }`}
+        >
+          {i + 1}
+        </span>
+      </button>
+    );
   }
-}
+);
+
+DayButton.displayName = "DayButton";
 
 export function Journal() {
-  const [entries, setEntries] = useState<Record<number, DayEntry>>({});
+  const [days, setDays] = useState<DayEntry[]>([]);
   const [selected, setSelected] = useState(0);
+  const [saving, setSaving] = useState(false);
 
+  // Chargement initial depuis Supabase (PULL UNIQUE)
   useEffect(() => {
-    setEntries(loadEntries());
-    // Sélectionne le jour actuel si on est pendant la rando
-    const today = new Date();
-    const diffDays = Math.floor((today.getTime() - HIKE_START.getTime()) / 86400000);
-    if (diffDays >= 0 && diffDays < TOTAL_DAYS) setSelected(diffDays);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("gr20_journal")
+          .select("*")
+          .eq("hiker", "lisa")
+          .order("day_index");
+
+        if (error) throw error;
+
+        const map: Record<number, DayEntry> = {};
+
+        (data || []).forEach((row) => {
+          map[row.day_index] = {
+            day_index: row.day_index,
+            stage: row.stage || "",
+            km: Number(row.km) || 0,
+            denivele: Number(row.denivele) || 0,
+            note: row.note || "",
+          };
+        });
+
+        const loadedDays: DayEntry[] = Array.from(
+          { length: TOTAL_DAYS },
+          (_, i) => ({
+            day_index: i,
+            stage: map[i]?.stage || "",
+            km: map[i]?.km || 0,
+            denivele: map[i]?.denivele || 0,
+            note: map[i]?.note || "",
+          })
+        );
+
+        setDays(loadedDays);
+
+        // Sélection automatique du jour actuel par rapport au départ du GR20
+        const today = new Date();
+        const diffDays = Math.floor(
+          (today.getTime() - HIKE_START.getTime()) / 86400000
+        );
+
+        if (diffDays >= 0 && diffDays < TOTAL_DAYS) {
+          setSelected(diffDays);
+        }
+      } catch (err) {
+        console.error("Erreur de chargement:", err);
+      }
+    })();
   }, []);
 
-  const update = (idx: number, patch: Partial<DayEntry>) => {
-    setEntries((prev) => {
-      const base: DayEntry = prev[idx] ?? { km: 0, denivele: 0, note: "" };
-      const next = {
-        ...prev,
-        [idx]: { ...base, ...patch },
-      };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
+  // Calculs simples pour les compteurs globaux
   const { totalKm, totalDen, daysDone } = useMemo(() => {
     let km = 0;
     let den = 0;
-    let dd = 0;
-    for (let i = 0; i < TOTAL_DAYS; i++) {
-      const e = entries[i];
-      if (e && (e.km > 0 || e.denivele > 0 || e.note?.trim())) {
-        km += Number(e.km) || 0;
-        den += Number(e.denivele) || 0;
-        dd += 1;
+    let done = 0;
+
+    days.forEach((e) => {
+      km += e.km || 0;
+      den += e.denivele || 0;
+      if (e.km > 0 || e.denivele > 0 || e.note.trim() !== "") {
+        done++;
       }
-    }
-    return { totalKm: km, totalDen: den, daysDone: dd };
-  }, [entries]);
+    });
 
-  const kmPct = Math.min(100, (totalKm / GOAL_KM) * 100);
-  const denPct = Math.min(100, (totalDen / GOAL_DENIVELE) * 100);
-  const overallPct = (kmPct + denPct) / 2;
+    return { totalKm: km, totalDen: den, daysDone: done };
+  }, [days]);
 
+  const totalDays = days.length || TOTAL_DAYS;
+  const progressPct = totalDays > 0 ? Math.round((daysDone / totalDays) * 100) : 0;
   const selectedDate = new Date(HIKE_START.getTime() + selected * 86400000);
-  const current = entries[selected] ?? { km: 0, denivele: 0, note: "" };
 
   return (
     <section className="mt-12 animate-fade-up" style={{ animationDelay: "750ms" }}>
@@ -102,168 +151,214 @@ export function Journal() {
           <h2 className="mt-2 font-display text-3xl sm:text-4xl">Le chemin de Lisa</h2>
         </div>
         <div className="text-right">
-          <p className="font-display text-3xl text-sunset tabular-nums">{Math.round(overallPct)}%</p>
+          <p className="font-display text-3xl text-sunset tabular-nums">{progressPct}%</p>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">parcouru</p>
         </div>
       </div>
 
-      {/* Gauge interactive */}
       <div className="rounded-3xl bg-card/50 backdrop-blur-xl border border-white/40 p-5 sm:p-7 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
-        {/* Trace de l'itinéraire avec jalons par jour */}
         <div className="relative">
           <div className="h-3 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700 ease-out"
               style={{
-                width: `${overallPct}%`,
+                width: `${progressPct}%`,
                 background:
                   "linear-gradient(90deg, oklch(0.78 0.14 50), oklch(0.65 0.2 10), oklch(0.55 0.18 340))",
-                boxShadow: "0 0 24px oklch(0.7 0.17 10 / 0.6)",
               }}
             />
           </div>
+
           <div className="mt-4 grid grid-cols-8 sm:grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5">
             {Array.from({ length: TOTAL_DAYS }).map((_, i) => {
-              const e = entries[i];
-              const done = e && (e.km > 0 || e.denivele > 0 || e.note?.trim());
-              const isSel = i === selected;
+              const e = days[i];
+              const done = !!e && (e.km > 0 || e.denivele > 0 || e.note?.trim() !== "");
               return (
-                <button
+                <DayButton
                   key={i}
-                  onClick={() => setSelected(i)}
-                  aria-label={`Jour ${i + 1}`}
-                  className={`group relative aspect-square rounded-lg border transition-all ${
-                    isSel
-                      ? "border-primary scale-110 shadow-[0_0_12px_oklch(0.7_0.17_10/0.6)]"
-                      : "border-white/30 hover:border-primary/60"
-                  } ${done ? "bg-gradient-to-br from-[oklch(0.78_0.14_50)] to-[oklch(0.55_0.18_340)]" : "bg-secondary/60"}`}
-                >
-                  <span
-                    className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold ${
-                      done ? "text-white" : "text-muted-foreground"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
-                </button>
+                  i={i}
+                  selected={selected}
+                  done={done}
+                  onSelect={setSelected}
+                />
               );
             })}
           </div>
         </div>
 
-        {/* Totaux */}
         <div className="mt-6 grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-background/40 border border-white/30 p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Distance</p>
             <p className="font-display text-xl tabular-nums">
-              {totalKm.toFixed(1)} <span className="text-xs text-muted-foreground">/ {GOAL_KM} km</span>
+              {totalKm.toFixed(1)}
+              <span className="text-xs text-muted-foreground"> km</span>
             </p>
-            <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full bg-sunset" style={{ width: `${kmPct}%` }} />
-            </div>
           </div>
+
           <div className="rounded-xl bg-background/40 border border-white/30 p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Dénivelé</p>
             <p className="font-display text-xl tabular-nums">
-              {totalDen.toLocaleString("fr-FR")}{" "}
-              <span className="text-xs text-muted-foreground">/ {GOAL_DENIVELE.toLocaleString("fr-FR")} m</span>
+              {totalDen.toLocaleString("fr-FR")}
+              <span className="text-xs text-muted-foreground"> m</span>
             </p>
-            <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full bg-sunset" style={{ width: `${denPct}%` }} />
-            </div>
           </div>
+
           <div className="rounded-xl bg-background/40 border border-white/30 p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Étapes</p>
             <p className="font-display text-xl tabular-nums">
-              {daysDone} <span className="text-xs text-muted-foreground">/ {TOTAL_DAYS}</span>
+              {daysDone}
+              <span className="text-xs text-muted-foreground"> / {totalDays}</span>
             </p>
             <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
               <div
                 className="h-full bg-sunset"
-                style={{ width: `${(daysDone / TOTAL_DAYS) * 100}%` }}
+                style={{ width: `${(daysDone / Math.max(totalDays, 1)) * 100}%` }}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Formulaire du jour sélectionné */}
-      <div className="mt-5 rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-              Jour {selected + 1} · {formatDate(selectedDate)}
-            </p>
-            <p className="mt-1 font-display text-xl text-sunset">{STAGES[selected]}</p>
-          </div>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setSelected((s) => Math.max(0, s - 1))}
-              disabled={selected === 0}
-              className="rounded-full border border-white/40 px-3 py-1 text-sm hover:bg-primary/10 disabled:opacity-30"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => setSelected((s) => Math.min(TOTAL_DAYS - 1, s + 1))}
-              disabled={selected === TOTAL_DAYS - 1}
-              className="rounded-full border border-white/40 px-3 py-1 text-sm hover:bg-primary/10 disabled:opacity-30"
-            >
-              →
-            </button>
-          </div>
-        </div>
+      <DayForm
+        key={selected}
+        selected={selected}
+        totalDays={totalDays}
+        selectedDate={selectedDate}
+        stage={days[selected]?.stage ?? ""}
+        initialKm={days[selected]?.km ?? 0}
+        initialDenivele={days[selected]?.denivele ?? 0}
+        initialNote={days[selected]?.note ?? ""}
+        onPrev={() => setSelected((s) => Math.max(0, s - 1))}
+        onNext={() => setSelected((s) => Math.min(totalDays - 1, s + 1))}
+        onSave={async (km, denivele, note) => {
+          setSaving(true);
+          try {
+            // PUSH vers la base de données
+            const { error } = await supabase
+              .from("gr20_journal")
+              .update({ km, denivele, note })
+              .eq("hiker", "lisa")
+              .eq("day_index", selected);
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Kilomètres
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step={0.1}
-              value={current.km || ""}
-              onChange={(e) => update(selected, { km: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              className="mt-1 w-full rounded-xl bg-background/60 border border-white/30 px-4 py-3 font-display text-lg tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </label>
-          <label className="block">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Dénivelé (m)
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={10}
-              value={current.denivele || ""}
-              onChange={(e) => update(selected, { denivele: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-              className="mt-1 w-full rounded-xl bg-background/60 border border-white/30 px-4 py-3 font-display text-lg tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </label>
-        </div>
+            if (error) throw error;
 
-        <label className="mt-4 block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Carnet du jour (optionnel)
-          </span>
-          <textarea
-            value={current.note}
-            onChange={(e) => update(selected, { note: e.target.value })}
-            placeholder="Lever de soleil sur le Cinto, jambes lourdes mais cœur léger…"
-            rows={4}
-            className="mt-1 w-full resize-none rounded-xl bg-background/60 border border-white/30 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
+            // Simple rechargement de la page pour pull les nouvelles données proprement
+            window.location.reload();
+          } catch (err) {
+            console.error("Erreur de sauvegarde:", err);
+            alert("Erreur lors de la sauvegarde.");
+            setSaving(false);
+          }
+        }}
+        saving={saving}
+      />
+    </section>
+  );
+}
+
+type DayFormProps = {
+  selected: number;
+  totalDays: number;
+  selectedDate: Date;
+  stage: string;
+  initialKm: number;
+  initialDenivele: number;
+  initialNote: string;
+  onPrev: () => void;
+  onNext: () => void;
+  onSave: (km: number, denivele: number, note: string) => Promise<void>;
+  saving: boolean;
+};
+
+function DayForm({
+  selected,
+  selectedDate,
+  stage,
+  initialKm,
+  initialNote,
+  initialDenivele,
+  onPrev,
+  onNext,
+  onSave,
+  saving,
+}: DayFormProps) {
+  const kmRef = useRef<HTMLInputElement>(null);
+  const deniveleRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    const km = parseFloat(kmRef.current?.value ?? "") || 0;
+    const denivele = parseInt(deniveleRef.current?.value ?? "") || 0;
+    const note = noteRef.current?.value ?? "";
+    onSave(km, denivele, note);
+  };
+
+  const inputClass =
+    "mt-1 w-full rounded-xl bg-background/60 border border-white/30 px-4 py-3 font-display text-lg tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40";
+
+  return (
+    <form onSubmit={handleSave} className="mt-5 rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+            Jour {selected + 1} · {formatDate(selectedDate)}
+          </p>
+          <p className="mt-1 font-display text-xl text-sunset">{stage}</p>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" className="p-2 border rounded-lg hover:bg-white/10" onClick={onPrev}>←</button>
+          <button type="button" className="p-2 border rounded-lg hover:bg-white/10" onClick={onNext}>→</button>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Kilomètres</span>
+          <input
+            ref={kmRef}
+            type="number"
+            step="0.1"
+            inputMode="decimal"
+            defaultValue={initialKm > 0 ? String(initialKm) : ""}
+            className={inputClass}
           />
         </label>
 
-        <p className="mt-3 text-[10px] text-muted-foreground italic">
-          Sauvegardé automatiquement sur cet appareil.
-        </p>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Dénivelé (m)</span>
+          <input
+            ref={deniveleRef}
+            type="number"
+            inputMode="numeric"
+            defaultValue={initialDenivele > 0 ? String(initialDenivele) : ""}
+            className={inputClass}
+          />
+        </label>
       </div>
-    </section>
+
+      <label className="mt-5 block">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Carnet du jour
+        </span>
+        <textarea
+          ref={noteRef}
+          defaultValue={initialNote}
+          placeholder="Lever de soleil sur le Cinto, jambes lourdes mais cœur léger…"
+          rows={5}
+          className="mt-1 w-full resize-y rounded-xl bg-background/60 border border-white/30 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </label>
+
+      <div className="mt-6 flex items-center justify-between">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-8 py-3 rounded-2xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {saving ? "Enregistrement..." : "Enregistrer le jour"}
+        </button>
+      </div>
+    </form>
   );
 }
