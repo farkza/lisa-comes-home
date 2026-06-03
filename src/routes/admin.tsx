@@ -311,8 +311,14 @@ function GalleryAdmin() {
   async function handleDelete(photo: Photo) {
     if (!confirm(`Supprimer cette photo${photo.caption ? ` "${photo.caption}"` : ""} ?`)) return;
     try {
-      await supabase.storage.from(BUCKET).remove([photo.storage_path]);
-      await supabase.from("photos").delete().eq("id", photo.id);
+      // 1. Supprime le fichier dans le bucket Storage
+      const { error: storageErr } = await supabase.storage.from(BUCKET).remove([photo.storage_path]);
+      if (storageErr) throw storageErr;
+
+      // 2. Supprime la référence en base (caption inclus)
+      const { error: dbErr } = await supabase.from("photos").delete().eq("id", photo.id);
+      if (dbErr) throw dbErr;
+
       await load();
     } catch (e) {
       console.error(e);
