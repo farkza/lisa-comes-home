@@ -1,24 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
 
-function useDayNightMode() {
-  useEffect(() => {
-    const apply = () => {
-      const h = new Date().getHours();
-      const isNight = h >= 20 || h < 7;
-      document.documentElement.classList.toggle("night", isNight);
-    };
-    apply();
-    const id = setInterval(apply, 60_000);
-    return () => clearInterval(id);
-  }, []);
-}
+import { PasswordGate } from "@/components/PasswordGate";
 
 function NotFoundComponent() {
   return (
@@ -78,27 +66,15 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lisa" },
-      { name: "description", content: "Countdown to Lisa's GR20 return, calculating days until June 19, 2026." },
-    ],
-  }),
-  // shellComponent retiré — géré par index.html de Vite
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-  useDayNightMode();
-
   return (
-    <QueryClientProvider client={queryClient}>
+    <PasswordGate>
       <Outlet />
-    </QueryClientProvider>
+    </PasswordGate>
   );
 }
