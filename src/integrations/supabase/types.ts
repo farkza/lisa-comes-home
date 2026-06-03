@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      gr20_journal: {
+        Row: {
+          created_at: string
+          day_index: number
+          denivele: number
+          hiker: string
+          id: string
+          km: number
+          note: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_index: number
+          denivele?: number
+          hiker?: string
+          id?: string
+          km?: number
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_index?: number
+          denivele?: number
+          hiker?: string
+          id?: string
+          km?: number
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           created_at: string
