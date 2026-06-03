@@ -6,7 +6,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 
-import { PasswordGate } from "@/components/PasswordGate";
+
 
 function NotFoundComponent() {
   return (
@@ -72,9 +72,5 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootComponent() {
-  return (
-    <PasswordGate>
-      <Outlet />
-    </PasswordGate>
-  );
+  return <Outlet />;
 }
