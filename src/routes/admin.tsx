@@ -224,14 +224,23 @@ type Photo = {
   caption: string | null;
   author: string | null;
   created_at: string;
+  stage_day: number | null;
   url: string;
 };
+
+// Stage options for upload dropdown
+const STAGE_OPTIONS: { value: number; label: string }[] = [
+  { value: -1, label: "Avant l'aventure" },
+  ...Array.from({ length: 15 }, (_, i) => ({ value: i, label: `Jour ${i + 1}` })),
+  { value: 15, label: "Après l'aventure" },
+];
 
 function GalleryAdmin() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState("");
+  const [stageDay, setStageDay] = useState<number>(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -247,7 +256,7 @@ function GalleryAdmin() {
       return;
     }
 
-    const withUrls: Photo[] = (data ?? []).map((p) => {
+    const withUrls: Photo[] = (data ?? []).map((p: any) => {
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(p.storage_path);
       return { ...p, url: pub.publicUrl };
     });
@@ -269,11 +278,8 @@ function GalleryAdmin() {
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-      // Conversion en ArrayBuffer — obligatoire pour Safari (iOS + macOS)
       const arrayBuffer = await file.arrayBuffer();
 
-      // 1. Upload dans le bucket Storage
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, arrayBuffer, {
@@ -283,16 +289,15 @@ function GalleryAdmin() {
         });
       if (upErr) throw upErr;
 
-      // 2. Insertion de la référence en base
       const { error: insErr } = await supabase
         .from("photos")
         .insert({
           storage_path: path,
           caption: caption.trim() || null,
           author: "Lisa",
-        });
+          stage_day: stageDay,
+        } as any);
       if (insErr) {
-        // Si l'insert échoue, on supprime le fichier déjà uploadé pour éviter les orphelins
         await supabase.storage.from(BUCKET).remove([path]);
         throw insErr;
       }
@@ -301,7 +306,7 @@ function GalleryAdmin() {
       await load();
     } catch (e) {
       console.error("Upload échoué :", e);
-      alert("Oups, l'upload a échoué. Vérifie que le bucket « photos » existe et que la table « photos » est accessible.");
+      alert("Oups, l'upload a échoué.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -311,14 +316,10 @@ function GalleryAdmin() {
   async function handleDelete(photo: Photo) {
     if (!confirm(`Supprimer cette photo${photo.caption ? ` "${photo.caption}"` : ""} ?`)) return;
     try {
-      // 1. Supprime le fichier dans le bucket Storage
       const { error: storageErr } = await supabase.storage.from(BUCKET).remove([photo.storage_path]);
       if (storageErr) throw storageErr;
-
-      // 2. Supprime la référence en base (caption inclus)
       const { error: dbErr } = await supabase.from("photos").delete().eq("id", photo.id);
       if (dbErr) throw dbErr;
-
       await load();
     } catch (e) {
       console.error(e);
@@ -328,20 +329,32 @@ function GalleryAdmin() {
 
   return (
     <div className="rounded-3xl bg-card/50 backdrop-blur-xl border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
-      {/* Formulaire d'upload */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-        <input
-          type="text"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="Une petite légende…"
-          className="flex-1 px-3 py-2 rounded-xl bg-background/60 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Une petite légende…"
+            className="flex-1 px-3 py-2 rounded-xl bg-background/60 border border-border text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <select
+            value={stageDay}
+            onChange={(e) => setStageDay(Number(e.target.value))}
+            className="px-3 py-2 rounded-xl bg-background/60 border border-border text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {STAGE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <label
           htmlFor="gallery-file-input"
           className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
         >
-          {uploading ? "Envoi…" : "📷 Ajouter"}
+          {uploading ? "Envoi…" : "📷 Ajouter une photo"}
         </label>
         <input
           id="gallery-file-input"
@@ -357,7 +370,6 @@ function GalleryAdmin() {
         />
       </div>
 
-      {/* Grille de photos */}
       {loading ? (
         <p className="mt-4 text-sm text-muted-foreground text-center">Chargement…</p>
       ) : photos.length === 0 ? (
@@ -366,18 +378,19 @@ function GalleryAdmin() {
         <div className="mt-4 grid grid-cols-3 gap-2">
           {photos.map((p) => (
             <figure key={p.id} className="relative rounded-xl overflow-hidden aspect-square border border-white/20 group">
-              <img
-                src={p.url}
-                alt={p.caption ?? ""}
-                loading="lazy"
-                className="w-full h-full object-cover"
-              />
-              {p.caption && (
+              <img src={p.url} alt={p.caption ?? ""} loading="lazy" className="w-full h-full object-cover" />
+              {(p.caption || typeof p.stage_day === "number") && (
                 <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-white text-[10px] truncate">
-                  {p.caption}
+                  {typeof p.stage_day === "number" && p.stage_day >= 0 && p.stage_day < 15
+                    ? `J${p.stage_day + 1}`
+                    : p.stage_day === -1
+                    ? "Avant"
+                    : p.stage_day === 15
+                    ? "Après"
+                    : ""}
+                  {p.caption ? ` · ${p.caption}` : ""}
                 </figcaption>
               )}
-              {/* Bouton suppression : toujours visible sur mobile, hover sur desktop */}
               <button
                 type="button"
                 onClick={() => handleDelete(p)}
