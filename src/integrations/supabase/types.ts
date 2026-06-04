@@ -50,6 +50,27 @@ export type Database = {
         }
         Relationships: []
       }
+      guestbook: {
+        Row: {
+          author: string
+          created_at: string
+          id: string
+          message: string
+        }
+        Insert: {
+          author: string
+          created_at?: string
+          id?: string
+          message: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          id?: string
+          message?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           created_at: string
@@ -80,12 +101,45 @@ export type Database = {
         }
         Relationships: []
       }
+      photo_reactions: {
+        Row: {
+          author: string
+          created_at: string
+          emoji: string
+          id: string
+          photo_id: string
+        }
+        Insert: {
+          author?: string
+          created_at?: string
+          emoji: string
+          id?: string
+          photo_id: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_reactions_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos: {
         Row: {
           author: string | null
           caption: string | null
           created_at: string
           id: string
+          stage_day: number | null
           storage_path: string
         }
         Insert: {
@@ -93,6 +147,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          stage_day?: number | null
           storage_path: string
         }
         Update: {
@@ -100,6 +155,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          stage_day?: number | null
           storage_path?: string
         }
         Relationships: []
