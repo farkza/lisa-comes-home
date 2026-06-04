@@ -14,12 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      gr20_journal: {
+        Row: {
+          created_at: string
+          day_index: number
+          denivele: number
+          hiker: string
+          id: string
+          km: number
+          note: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_index: number
+          denivele?: number
+          hiker?: string
+          id?: string
+          km?: number
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_index?: number
+          denivele?: number
+          hiker?: string
+          id?: string
+          km?: number
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guestbook: {
+        Row: {
+          author: string
+          created_at: string
+          id: string
+          message: string
+        }
+        Insert: {
+          author: string
+          created_at?: string
+          id?: string
+          message: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          id?: string
+          message?: string
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          created_at: string
+          day_index: number
+          denivele: number
+          id: string
+          km: number
+          note: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_index: number
+          denivele?: number
+          id?: string
+          km?: number
+          note?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_index?: number
+          denivele?: number
+          id?: string
+          km?: number
+          note?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      photo_reactions: {
+        Row: {
+          author: string
+          created_at: string
+          emoji: string
+          id: string
+          photo_id: string
+        }
+        Insert: {
+          author?: string
+          created_at?: string
+          emoji: string
+          id?: string
+          photo_id: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_reactions_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos: {
         Row: {
           author: string | null
           caption: string | null
           created_at: string
           id: string
+          stage_day: number | null
           storage_path: string
         }
         Insert: {
@@ -27,6 +147,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          stage_day?: number | null
           storage_path: string
         }
         Update: {
@@ -34,6 +155,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          stage_day?: number | null
           storage_path?: string
         }
         Relationships: []

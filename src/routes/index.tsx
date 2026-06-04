@@ -4,6 +4,9 @@ import corsica from "@/assets/corsica.jpg";
 import { Journal } from "@/components/Journal";
 import { Particles } from "@/components/Particles";
 import { Gallery } from "@/components/Gallery";
+import { LiveBlock } from "@/components/LiveBlock";
+import { Guestbook } from "@/components/Guestbook";
+import { FinalStats } from "@/components/FinalStats";
 import "../styles.css";
 
 function useScrollY() {
@@ -128,6 +131,7 @@ function Index() {
       </div>
 
       <div className="relative mx-auto max-w-2xl px-5 pt-20 pb-16 sm:pt-28">
+        <LiveBlock />
         <div className="animate-fade-up">
           <p className="text-xs uppercase tracking-[0.3em] text-primary/80 font-medium">
             GR20 · Corse
@@ -206,6 +210,10 @@ function Index() {
         <Gallery />
 
         <Journal />
+
+        <FinalStats />
+
+        <Guestbook />
 
         <p className="mt-12 text-center text-sm text-muted-foreground italic animate-fade-up" style={{ animationDelay: "900ms" }}>
           « Les montagnes te rendront ce que tu leur donnes. »
