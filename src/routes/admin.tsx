@@ -6,6 +6,26 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
+// ─── Calcul automatique du stage_day ──────────────────────────────────────
+const HIKE_START = new Date("2026-06-04T12:00:00");
+const HIKE_END = new Date("2026-06-18T12:00:00");
+const TOTAL_DAYS = 15;
+
+function getAutoStageDay(): number {
+  const now = new Date();
+  if (now < HIKE_START) return -1; // avant l'aventure
+  if (now > HIKE_END) return 15;  // après l'aventure
+  const diff = Math.floor((now.getTime() - HIKE_START.getTime()) / 86400000);
+  return Math.min(Math.max(diff, 0), TOTAL_DAYS - 1);
+}
+
+function stageDayLabel(v: number): string {
+  if (v === -1) return "Avant l'aventure";
+  if (v === 15) return "Après l'aventure";
+  return `Jour ${v + 1} (${new Date(HIKE_START.getTime() + v * 86400000).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })})`;
+}
+
+// ─── Top bar avatar ────────────────────────────────────────────────────────
 function TopBarAvatar() {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -28,6 +48,7 @@ function TopBarAvatar() {
   );
 }
 
+// ─── Admin page ────────────────────────────────────────────────────────────
 function Admin() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
@@ -111,8 +132,7 @@ function Admin() {
   );
 }
 
-// ─── Profile admin (photo de profil) ──────────────────────────────────────
-
+// ─── Profile admin ─────────────────────────────────────────────────────────
 const PROFILE_BUCKET = "profile";
 const PROFILE_PATH = "lisa/avatar.jpg";
 
@@ -122,7 +142,6 @@ function ProfileAdmin() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Charge l'URL publique actuelle de la photo de profil (avec cache-bust)
     const { data } = supabase.storage.from(PROFILE_BUCKET).getPublicUrl(PROFILE_PATH);
     if (data?.publicUrl) {
       setCurrentUrl(`${data.publicUrl}?t=${Date.now()}`);
@@ -134,12 +153,9 @@ function ProfileAdmin() {
       alert("Merci de sélectionner une image (JPG, PNG…)");
       return;
     }
-
     setUploading(true);
     try {
-      // Conversion en ArrayBuffer — obligatoire pour Safari (iOS + macOS)
       const arrayBuffer = await file.arrayBuffer();
-
       const { error: upErr } = await supabase.storage
         .from(PROFILE_BUCKET)
         .upload(PROFILE_PATH, arrayBuffer, {
@@ -147,17 +163,14 @@ function ProfileAdmin() {
           contentType: file.type,
           upsert: true,
         });
-
       if (upErr) throw upErr;
-
-      // Met à jour l'aperçu local avec cache-bust
       const { data } = supabase.storage.from(PROFILE_BUCKET).getPublicUrl(PROFILE_PATH);
       if (data?.publicUrl) {
         setCurrentUrl(`${data.publicUrl}?t=${Date.now()}`);
       }
     } catch (e) {
       console.error(e);
-      alert("Oups, l'upload a échoué. Vérifie que le bucket « profile » existe dans Supabase et qu'il est public.");
+      alert("Oups, l'upload a échoué.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -167,29 +180,15 @@ function ProfileAdmin() {
   return (
     <div className="rounded-3xl bg-card/50 backdrop-blur-xl border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
       <div className="flex items-center gap-5">
-        {/* Aperçu */}
         <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/30 bg-muted flex-shrink-0">
           {currentUrl ? (
-            <img
-              src={currentUrl}
-              alt="Photo de profil"
-              className="w-full h-full object-cover"
-              onError={() => setCurrentUrl(null)}
-            />
+            <img src={currentUrl} alt="Photo de profil" className="w-full h-full object-cover" onError={() => setCurrentUrl(null)} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">
-              🧍
-            </div>
+            <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">🧍</div>
           )}
         </div>
-
-        {/* Upload */}
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-muted-foreground">
-            Format JPG ou PNG · Remplace automatiquement l'ancienne photo.
-          </p>
-          {/* Safari desktop : l'input doit être visible dans le DOM avec une taille réelle,
-               pas sr-only (clip+overflow:hidden bloque le dialog sur Safari macOS) */}
+          <p className="text-sm text-muted-foreground">Format JPG ou PNG · Remplace automatiquement l'ancienne photo.</p>
           <label
             htmlFor="profile-file-input"
             className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition w-fit cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
@@ -214,8 +213,7 @@ function ProfileAdmin() {
   );
 }
 
-// ─── Gallery admin (upload) ────────────────────────────────────────────────
-
+// ─── Gallery admin ─────────────────────────────────────────────────────────
 const BUCKET = "photos";
 
 type Photo = {
@@ -228,20 +226,15 @@ type Photo = {
   url: string;
 };
 
-// Stage options for upload dropdown
-const STAGE_OPTIONS: { value: number; label: string }[] = [
-  { value: -1, label: "Avant l'aventure" },
-  ...Array.from({ length: 15 }, (_, i) => ({ value: i, label: `Jour ${i + 1}` })),
-  { value: 15, label: "Après l'aventure" },
-];
-
 function GalleryAdmin() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState("");
-  const [stageDay, setStageDay] = useState<number>(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Stage day calculé automatiquement
+  const autoStageDay = getAutoStageDay();
 
   async function load() {
     setLoading(true);
@@ -249,13 +242,11 @@ function GalleryAdmin() {
       .from("photos")
       .select("*")
       .order("created_at", { ascending: false });
-
     if (error) {
       console.error("Erreur chargement photos :", error);
       setLoading(false);
       return;
     }
-
     const withUrls: Photo[] = (data ?? []).map((p: any) => {
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(p.storage_path);
       return { ...p, url: pub.publicUrl };
@@ -273,13 +264,11 @@ function GalleryAdmin() {
       alert("Merci de sélectionner une image.");
       return;
     }
-
     setUploading(true);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const arrayBuffer = await file.arrayBuffer();
-
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, arrayBuffer, {
@@ -288,20 +277,18 @@ function GalleryAdmin() {
           upsert: false,
         });
       if (upErr) throw upErr;
-
       const { error: insErr } = await supabase
         .from("photos")
         .insert({
           storage_path: path,
           caption: caption.trim() || null,
           author: "Lisa",
-          stage_day: stageDay,
+          stage_day: autoStageDay, // ← calculé automatiquement
         } as any);
       if (insErr) {
         await supabase.storage.from(BUCKET).remove([path]);
         throw insErr;
       }
-
       setCaption("");
       await load();
     } catch (e) {
@@ -329,27 +316,20 @@ function GalleryAdmin() {
 
   return (
     <div className="rounded-3xl bg-card/50 backdrop-blur-xl border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
+      {/* Indicateur du stage_day automatique */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Étape détectée :</span>
+        <span className="text-xs font-medium text-sunset">{stageDayLabel(autoStageDay)}</span>
+      </div>
+
       <div className="flex flex-col gap-2 sm:gap-3">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Une petite légende…"
-            className="flex-1 px-3 py-2 rounded-xl bg-background/60 border border-border text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <select
-            value={stageDay}
-            onChange={(e) => setStageDay(Number(e.target.value))}
-            className="px-3 py-2 rounded-xl bg-background/60 border border-border text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            {STAGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <input
+          type="text"
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Une petite légende…"
+          className="w-full px-3 py-2 rounded-xl bg-background/60 border border-border text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
         <label
           htmlFor="gallery-file-input"
           className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
@@ -407,8 +387,7 @@ function GalleryAdmin() {
   );
 }
 
-// ─── Journal admin (saisie) ────────────────────────────────────────────────
-
+// ─── Journal admin ─────────────────────────────────────────────────────────
 type DayEntry = {
   day_index: number;
   stage: string;
@@ -416,9 +395,6 @@ type DayEntry = {
   denivele: number;
   note: string;
 };
-
-const HIKE_START = new Date("2026-06-04T12:00:00");  // midi pour éviter décalage UTC/local sur Safari
-const TOTAL_DAYS = 15;
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("fr-FR", {
@@ -444,12 +420,10 @@ function JournalAdmin() {
         .select("*")
         .eq("hiker", "lisa")
         .order("day_index");
-
       if (error) {
         console.error("Erreur chargement journal :", error);
         return;
       }
-
       const map: Record<number, DayEntry> = {};
       (data || []).forEach((row) => {
         map[row.day_index] = {
@@ -460,7 +434,6 @@ function JournalAdmin() {
           note: row.note || "",
         };
       });
-
       const loaded: DayEntry[] = Array.from({ length: TOTAL_DAYS }, (_, i) => ({
         day_index: i,
         stage: map[i]?.stage || "",
@@ -468,10 +441,7 @@ function JournalAdmin() {
         denivele: map[i]?.denivele || 0,
         note: map[i]?.note || "",
       }));
-
       setDays(loaded);
-
-      // Sélectionne automatiquement le jour courant
       const today = new Date();
       const diff = Math.floor((today.getTime() - HIKE_START.getTime()) / 86400000);
       if (diff >= 0 && diff < TOTAL_DAYS) setSelected(diff);
@@ -501,27 +471,17 @@ function JournalAdmin() {
     e.preventDefault();
     setSaving(true);
     setSaveStatus("idle");
-
     const km = parseFloat(kmRef.current?.value ?? "") || 0;
     const denivele = parseInt(deniveleRef.current?.value ?? "") || 0;
     const note = noteRef.current?.value?.trim() ?? "";
     const stage = days[selected]?.stage || "";
-
     try {
-      // upsert : crée ou met à jour selon (hiker, day_index)
-      // ⚠️ Assure-toi d'avoir une contrainte unique sur (hiker, day_index) dans Supabase
       const { error } = await supabase.from("gr20_journal").upsert(
         { hiker: "lisa", day_index: selected, stage, km, denivele, note },
         { onConflict: "hiker,day_index" }
       );
       if (error) throw error;
-
-      // Met à jour le state local sans recharger la page
-      setDays((prev) =>
-        prev.map((d) =>
-          d.day_index === selected ? { ...d, km, denivele, note } : d
-        )
-      );
+      setDays((prev) => prev.map((d) => d.day_index === selected ? { ...d, km, denivele, note } : d));
       setSaveStatus("ok");
       setTimeout(() => setSaveStatus("idle"), 2500);
     } catch (e) {
@@ -534,7 +494,6 @@ function JournalAdmin() {
 
   const selectedDate = new Date(HIKE_START.getTime() + selected * 86400000);
   const entry = days[selected];
-
   const inputClass =
     "mt-1 w-full rounded-xl bg-background/60 border border-white/30 px-4 py-3 font-display text-lg tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40";
 
@@ -543,15 +502,12 @@ function JournalAdmin() {
       onSubmit={handleSave}
       className="rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]"
     >
-      {/* Header du jour */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div>
           <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
             Jour {selected + 1} · {formatDate(selectedDate)}
           </p>
-          <p className="mt-1 font-display text-xl text-sunset">
-            {entry?.stage || "—"}
-          </p>
+          <p className="mt-1 font-display text-xl text-sunset">{entry?.stage || "—"}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -559,26 +515,19 @@ function JournalAdmin() {
             className="p-2 border rounded-lg hover:bg-white/10 disabled:opacity-40"
             disabled={selected === 0}
             onClick={() => setSelected((s) => Math.max(0, s - 1))}
-          >
-            ←
-          </button>
+          >←</button>
           <button
             type="button"
             className="p-2 border rounded-lg hover:bg-white/10 disabled:opacity-40"
             disabled={selected === TOTAL_DAYS - 1}
             onClick={() => setSelected((s) => Math.min(TOTAL_DAYS - 1, s + 1))}
-          >
-            →
-          </button>
+          >→</button>
         </div>
       </div>
 
-      {/* Champs km / dénivelé */}
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Kilomètres
-          </span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Kilomètres</span>
           <input
             key={`km-${selected}`}
             ref={kmRef}
@@ -592,9 +541,7 @@ function JournalAdmin() {
           />
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Dénivelé (m)
-          </span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Dénivelé (m)</span>
           <input
             key={`den-${selected}`}
             ref={deniveleRef}
@@ -608,11 +555,8 @@ function JournalAdmin() {
         </label>
       </div>
 
-      {/* Note du jour */}
       <label className="mt-5 block">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Carnet du jour
-        </span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Carnet du jour</span>
         <textarea
           key={`note-${selected}`}
           ref={noteRef}
@@ -623,7 +567,6 @@ function JournalAdmin() {
         />
       </label>
 
-      {/* Bouton + feedback */}
       <div className="mt-6 flex items-center gap-3 flex-wrap">
         <button
           type="submit"
@@ -640,12 +583,8 @@ function JournalAdmin() {
         >
           🗑 Effacer
         </button>
-        {saveStatus === "ok" && (
-          <span className="text-sm text-green-400">✓ Sauvegardé !</span>
-        )}
-        {saveStatus === "error" && (
-          <span className="text-sm text-red-400">✗ Erreur lors de la sauvegarde.</span>
-        )}
+        {saveStatus === "ok" && <span className="text-sm text-green-400">✓ Sauvegardé !</span>}
+        {saveStatus === "error" && <span className="text-sm text-red-400">✗ Erreur lors de la sauvegarde.</span>}
       </div>
     </form>
   );

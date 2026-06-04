@@ -27,18 +27,11 @@ const WEATHER_LABELS: Record<number, string> = {
   99: "Orage + grêle ⛈",
 };
 
-const DISMISS_KEY = "lisa-live-dismissed-until";
-
 export function LiveBlock() {
   const idx = getCurrentStageIndex();
   const stage = idx >= 0 ? GR20_STAGES[idx] : null;
   const [weather, setWeather] = useState<Weather>(null);
-  const [dismissed, setDismissed] = useState(true);
-
-  useEffect(() => {
-    const until = Number(localStorage.getItem(DISMISS_KEY) || 0);
-    setDismissed(Date.now() < until);
-  }, []);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (!stage) return;
@@ -55,8 +48,6 @@ export function LiveBlock() {
   if (!stage || dismissed) return null;
 
   function handleDismiss() {
-    // dismiss 4h
-    localStorage.setItem(DISMISS_KEY, String(Date.now() + 4 * 60 * 60 * 1000));
     setDismissed(true);
   }
 
