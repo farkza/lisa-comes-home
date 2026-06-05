@@ -4,9 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  HeadContent,
 } from "@tanstack/react-router";
-
-
 
 function NotFoundComponent() {
   return (
@@ -33,7 +32,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -69,8 +67,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
+  head: () => ({
+    links: [
+      {
+        rel: "apple-touch-icon",
+        sizes: "180x180",
+        href: "/apple-touch-icon-180x180.png",
+      },
+    ],
+  }),
 });
 
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <>
+      <HeadContent />
+      <Outlet />
+    </>
+  );
 }
