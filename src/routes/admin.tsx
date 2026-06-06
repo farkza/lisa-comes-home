@@ -233,8 +233,8 @@ function GalleryAdmin() {
   const [caption, setCaption] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Stage day calculé automatiquement
-  const autoStageDay = getAutoStageDay();
+  // Sélection manuelle du stage_day (pré-rempli avec le jour automatique)
+  const [selectedStageDay, setSelectedStageDay] = useState<number>(getAutoStageDay());
 
   async function load() {
     setLoading(true);
@@ -283,7 +283,7 @@ function GalleryAdmin() {
           storage_path: path,
           caption: caption.trim() || null,
           author: "Lisa",
-          stage_day: autoStageDay, // ← calculé automatiquement
+          stage_day: selectedStageDay,
         } as any);
       if (insErr) {
         await supabase.storage.from(BUCKET).remove([path]);
@@ -316,10 +316,52 @@ function GalleryAdmin() {
 
   return (
     <div className="rounded-3xl bg-card/50 backdrop-blur-xl border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
-      {/* Indicateur du stage_day automatique */}
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Étape détectée :</span>
-        <span className="text-xs font-medium text-sunset">{stageDayLabel(autoStageDay)}</span>
+      {/* Sélecteur manuel du stage_day */}
+      <div className="mb-5">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-2">
+          Quand a été prise cette photo ?
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSelectedStageDay(-1)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+              selectedStageDay === -1
+                ? "bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white border-transparent"
+                : "border-white/20 text-muted-foreground hover:border-white/40 hover:text-foreground"
+            }`}
+          >
+            Avant
+          </button>
+          {Array.from({ length: 15 }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setSelectedStageDay(i)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                selectedStageDay === i
+                  ? "bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white border-transparent"
+                  : "border-white/20 text-muted-foreground hover:border-white/40 hover:text-foreground"
+              }`}
+            >
+              J{i + 1}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setSelectedStageDay(15)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+              selectedStageDay === 15
+                ? "bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white border-transparent"
+                : "border-white/20 text-muted-foreground hover:border-white/40 hover:text-foreground"
+            }`}
+          >
+            Après
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Sélectionné : <span className="text-foreground font-medium">{stageDayLabel(selectedStageDay)}</span>
+        </p>
       </div>
 
       <div className="flex flex-col gap-2 sm:gap-3">
