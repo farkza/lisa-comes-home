@@ -230,6 +230,7 @@ function GalleryAdmin() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [caption, setCaption] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -259,12 +260,8 @@ function GalleryAdmin() {
     load();
   }, []);
 
-  async function handleFile(file: File) {
-    if (!file.type.startsWith("image/")) {
-      alert("Merci de sélectionner une image.");
-      return;
-    }
-    setUploading(true);
+  async function uploadOne(file: File, sharedCaption: string | null): Promise<boolean> {
+    if (!file.type.startsWith("image/")) return false;
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -281,7 +278,7 @@ function GalleryAdmin() {
         .from("photos")
         .insert({
           storage_path: path,
-          caption: caption.trim() || null,
+          caption: sharedCaption,
           author: "Lisa",
           stage_day: selectedStageDay,
         } as any);
@@ -289,15 +286,42 @@ function GalleryAdmin() {
         await supabase.storage.from(BUCKET).remove([path]);
         throw insErr;
       }
-      setCaption("");
-      await load();
+      return true;
     } catch (e) {
-      console.error("Upload échoué :", e);
-      alert("Oups, l'upload a échoué.");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      console.error("Upload échoué :", file.name, e);
+      return false;
     }
+  }
+
+  async function handleFiles(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      alert("Merci de sélectionner des images.");
+      return;
+    }
+    setUploading(true);
+    setProgress({ done: 0, total: images.length });
+    const sharedCaption = caption.trim() || null;
+    let ok = 0;
+    let fail = 0;
+    // Parallélisme limité (3 à la fois) pour aller plus vite sans surcharger
+    const queue = [...images];
+    const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const f = queue.shift();
+        if (!f) break;
+        const success = await uploadOne(f, sharedCaption);
+        if (success) ok++; else fail++;
+        setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+    });
+    await Promise.all(workers);
+    setCaption("");
+    await load();
+    setUploading(false);
+    setProgress(null);
+    if (inputRef.current) inputRef.current.value = "";
+    if (fail > 0) alert(`${ok} photo(s) ajoutée(s), ${fail} en échec.`);
   }
 
   async function handleDelete(photo: Photo) {
