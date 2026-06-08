@@ -249,7 +249,7 @@ export function Journal() {
           <div className="rounded-xl bg-background/40 border border-white/30 p-4">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Kilomètres</p>
             <p className="font-display text-2xl tabular-nums mt-1">
-              {selectedEntry?.km > 0 ? selectedEntry.km.toFixed(1) : "—"}
+              {selectedEntry?.km > 0 ? selectedEntry.km.toFixed(2) : "—"}
               {selectedEntry?.km > 0 && (
                 <span className="text-xs text-muted-foreground"> km</span>
               )}
