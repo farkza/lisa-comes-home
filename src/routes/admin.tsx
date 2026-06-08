@@ -513,7 +513,7 @@ function JournalAdmin() {
     e.preventDefault();
     setSaving(true);
     setSaveStatus("idle");
-    const km = parseFloat(kmRef.current?.value ?? "") || 0;
+    const km = parseFloat((kmRef.current?.value ?? "").replace(",", ".")) || 0;
     const denivele = parseInt(deniveleRef.current?.value ?? "") || 0;
     const note = noteRef.current?.value?.trim() ?? "";
     const stage = days[selected]?.stage || "";
