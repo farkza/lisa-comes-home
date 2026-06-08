@@ -81,7 +81,7 @@ export function FinalStats() {
     }
   }
 
-  if (!isOver && daysDone === 0) return null;
+  
 
   return (
     <section ref={ref} className="mt-12 animate-fade-up" style={{ animationDelay: "850ms" }}>
