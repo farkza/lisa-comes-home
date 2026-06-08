@@ -230,6 +230,7 @@ function GalleryAdmin() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [caption, setCaption] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -259,12 +260,8 @@ function GalleryAdmin() {
     load();
   }, []);
 
-  async function handleFile(file: File) {
-    if (!file.type.startsWith("image/")) {
-      alert("Merci de sélectionner une image.");
-      return;
-    }
-    setUploading(true);
+  async function uploadOne(file: File, sharedCaption: string | null): Promise<boolean> {
+    if (!file.type.startsWith("image/")) return false;
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -281,7 +278,7 @@ function GalleryAdmin() {
         .from("photos")
         .insert({
           storage_path: path,
-          caption: caption.trim() || null,
+          caption: sharedCaption,
           author: "Lisa",
           stage_day: selectedStageDay,
         } as any);
@@ -289,15 +286,42 @@ function GalleryAdmin() {
         await supabase.storage.from(BUCKET).remove([path]);
         throw insErr;
       }
-      setCaption("");
-      await load();
+      return true;
     } catch (e) {
-      console.error("Upload échoué :", e);
-      alert("Oups, l'upload a échoué.");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      console.error("Upload échoué :", file.name, e);
+      return false;
     }
+  }
+
+  async function handleFiles(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      alert("Merci de sélectionner des images.");
+      return;
+    }
+    setUploading(true);
+    setProgress({ done: 0, total: images.length });
+    const sharedCaption = caption.trim() || null;
+    let ok = 0;
+    let fail = 0;
+    // Parallélisme limité (3 à la fois) pour aller plus vite sans surcharger
+    const queue = [...images];
+    const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const f = queue.shift();
+        if (!f) break;
+        const success = await uploadOne(f, sharedCaption);
+        if (success) ok++; else fail++;
+        setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+    });
+    await Promise.all(workers);
+    setCaption("");
+    await load();
+    setUploading(false);
+    setProgress(null);
+    if (inputRef.current) inputRef.current.value = "";
+    if (fail > 0) alert(`${ok} photo(s) ajoutée(s), ${fail} en échec.`);
   }
 
   async function handleDelete(photo: Photo) {
@@ -376,20 +400,37 @@ function GalleryAdmin() {
           htmlFor="gallery-file-input"
           className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
         >
-          {uploading ? "Envoi…" : "📷 Ajouter une photo"}
+          {uploading
+            ? progress
+              ? `Envoi… ${progress.done}/${progress.total}`
+              : "Envoi…"
+            : "📷 Ajouter des photos"}
         </label>
         <input
+          ref={inputRef}
           id="gallery-file-input"
           type="file"
           accept="image/*"
+          multiple
           disabled={uploading}
           style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "1px", height: "1px" }}
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) handleFiles(files);
             e.target.value = "";
           }}
         />
+        <p className="text-[11px] text-muted-foreground">
+          Astuce : tu peux sélectionner plusieurs photos à la fois. La légende et le jour choisis s'appliqueront à toutes.
+        </p>
+        {uploading && progress && (
+          <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] transition-all"
+              style={{ width: `${(progress.done / progress.total) * 100}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {loading ? (
