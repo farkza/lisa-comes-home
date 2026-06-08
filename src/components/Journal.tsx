@@ -187,7 +187,7 @@ export function Journal() {
           <div className="rounded-xl bg-background/40 border border-white/30 p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Distance</p>
             <p className="font-display text-xl tabular-nums">
-              {totalKm.toFixed(1)}
+              {totalKm.toFixed(2)}
               <span className="text-xs text-muted-foreground"> km</span>
             </p>
           </div>
