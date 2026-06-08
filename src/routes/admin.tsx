@@ -513,7 +513,7 @@ function JournalAdmin() {
     e.preventDefault();
     setSaving(true);
     setSaveStatus("idle");
-    const km = parseFloat(kmRef.current?.value ?? "") || 0;
+    const km = parseFloat((kmRef.current?.value ?? "").replace(",", ".")) || 0;
     const denivele = parseInt(deniveleRef.current?.value ?? "") || 0;
     const note = noteRef.current?.value?.trim() ?? "";
     const stage = days[selected]?.stage || "";
@@ -573,12 +573,13 @@ function JournalAdmin() {
           <input
             key={`km-${selected}`}
             ref={kmRef}
-            type="number"
-            step="0.1"
+            type="text"
+            step="0.01"
             min="0"
             inputMode="decimal"
+            pattern="[0-9]+([.,][0-9]+)?"
             defaultValue={entry?.km > 0 ? String(entry.km) : ""}
-            placeholder="0"
+            placeholder="ex : 12.80"
             className={inputClass}
           />
         </label>

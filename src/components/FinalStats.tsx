@@ -5,16 +5,15 @@ import { generateSouvenirPDF } from "@/lib/pdf-souvenir";
 
 function useCountUp(target: number, durationMs = 1500, start = false) {
   const [v, setV] = useState(0);
-  const startedRef = useRef(false);
   useEffect(() => {
-    if (!start || startedRef.current) return;
-    startedRef.current = true;
+    if (!start) return;
+    const from = 0;
     const t0 = performance.now();
     let raf = 0;
     const tick = (t: number) => {
       const p = Math.min(1, (t - t0) / durationMs);
       const eased = 1 - Math.pow(1 - p, 3);
-      setV(target * eased);
+      setV(from + (target - from) * eased);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
