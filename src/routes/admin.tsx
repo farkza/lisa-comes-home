@@ -400,20 +400,37 @@ function GalleryAdmin() {
           htmlFor="gallery-file-input"
           className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] text-white text-sm font-medium hover:opacity-90 transition cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
         >
-          {uploading ? "Envoi…" : "📷 Ajouter une photo"}
+          {uploading
+            ? progress
+              ? `Envoi… ${progress.done}/${progress.total}`
+              : "Envoi…"
+            : "📷 Ajouter des photos"}
         </label>
         <input
+          ref={inputRef}
           id="gallery-file-input"
           type="file"
           accept="image/*"
+          multiple
           disabled={uploading}
           style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "1px", height: "1px" }}
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) handleFiles(files);
             e.target.value = "";
           }}
         />
+        <p className="text-[11px] text-muted-foreground">
+          Astuce : tu peux sélectionner plusieurs photos à la fois. La légende et le jour choisis s'appliqueront à toutes.
+        </p>
+        {uploading && progress && (
+          <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[oklch(0.78_0.14_50)] to-[oklch(0.65_0.2_10)] transition-all"
+              style={{ width: `${(progress.done / progress.total) * 100}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {loading ? (
