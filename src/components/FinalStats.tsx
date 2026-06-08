@@ -36,22 +36,42 @@ export function FinalStats() {
   const isOver = new Date() >= RETOUR;
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    async function load() {
       const [{ data: journal }, { count }] = await Promise.all([
         supabase.from("gr20_journal").select("*").eq("hiker", "lisa"),
         supabase.from("photos").select("*", { count: "exact", head: true }),
       ]);
+      if (cancelled) return;
       let km = 0, den = 0, done = 0;
       (journal ?? []).forEach((d: any) => {
-        km += Number(d.km) || 0;
-        den += Number(d.denivele) || 0;
-        if (d.km > 0 || d.denivele > 0 || (d.note ?? "").trim() !== "") done++;
+        const k = Number(d.km) || 0;
+        const dv = Number(d.denivele) || 0;
+        km += k;
+        den += dv;
+        if (k > 0 || dv > 0 || (d.note ?? "").trim() !== "") done++;
       });
       setTotalKm(km);
       setTotalDen(den);
       setDaysDone(done);
       setPhotoCount(count ?? 0);
-    })();
+    }
+    load();
+
+    const ch = supabase
+      .channel("final-stats")
+      .on("postgres_changes", { event: "*", schema: "public", table: "gr20_journal" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "photos" }, load)
+      .subscribe();
+
+    const onVis = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   useEffect(() => {
