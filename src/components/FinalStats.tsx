@@ -81,7 +81,7 @@ export function FinalStats() {
     }
   }
 
-  if (!isOver && daysDone === 0) return null;
+  
 
   return (
     <section ref={ref} className="mt-12 animate-fade-up" style={{ animationDelay: "850ms" }}>
@@ -91,7 +91,7 @@ export function FinalStats() {
       </div>
       <div className="rounded-3xl bg-card/60 backdrop-blur-xl border border-white/40 p-6 sm:p-8 shadow-[0_20px_60px_-20px_oklch(0.62_0.18_15/0.3)]">
         <div className="grid grid-cols-2 gap-6">
-          <Stat value={km.toFixed(1)} unit="km" label="parcourus" />
+          <Stat value={km.toFixed(2)} unit="km" label="parcourus" />
           <Stat value={Math.round(den).toLocaleString("fr-FR")} unit="m" label="de dénivelé +" />
           <Stat value={Math.round(dn).toString()} unit={`/ ${GR20_STAGES.length}`} label="étapes bouclées" />
           <Stat value={Math.round(ph).toString()} unit="" label="photos partagées" />
